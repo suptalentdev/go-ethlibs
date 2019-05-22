@@ -14,7 +14,6 @@ func TestLogFilterParsing(t *testing.T) {
 		Message  string
 		Payload  string
 		Expected eth.LogFilter
-		Error    bool
 	}
 
 	tests := []TestCase{
@@ -249,30 +248,15 @@ func TestLogFilterParsing(t *testing.T) {
 				},
 			},
 		},
-		{
-			Message:  "invalid topics should fail",
-			Payload:  `{"topics":["0xfoo4foo4foo4foo4foo4foo4foo4foo4foo4foo4foo4foo4foo4foo4foo4foo4"]}`,
-			Expected: eth.LogFilter{},
-			Error:    true,
-		},
-		{
-			Message:  "invalid topic array should fail",
-			Payload:  `{"topics":[["0xfoo4foo4foo4foo4foo4foo4foo4foo4foo4foo4foo4foo4foo4foo4foo4foo4"]]}`,
-			Expected: eth.LogFilter{},
-			Error:    true,
-		},
 	}
 
 	for _, test := range tests {
 		actual := eth.LogFilter{}
 		err := json.Unmarshal([]byte(test.Payload), &actual)
-		if test.Error {
-			require.Error(t, err, test.Message)
-		} else {
-			require.NoError(t, err, test.Message)
-			require.Equal(t, test.Expected, actual, test.Message)
-		}
+		require.NoError(t, err, test.Message)
+		require.Equal(t, test.Expected, actual, test.Message)
 	}
+
 }
 
 func TestLog_UnmarshalJSON(t *testing.T) {
