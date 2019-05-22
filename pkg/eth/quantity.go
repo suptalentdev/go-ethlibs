@@ -8,8 +8,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-
-	"github.com/INFURA/ethereum-interaction/pkg/rlp"
 )
 
 type Quantity struct {
@@ -34,17 +32,6 @@ func NewQuantity(value string) (*Quantity, error) {
 		return nil, errors.New("quantity values must start with 0x")
 	}
 
-	if value == "0x" {
-		return nil, errors.New("quantity values must include at least one digit")
-	}
-
-	if strings.HasPrefix(value, "0x0") && value != "0x0" {
-		// TODO: Decide if leading 0 is invalid or acceptable
-		// If acceptable, remove the leading 0
-		// q.s = strings.Replace(value, "0x0", "0x", 1)
-		return nil, errors.New("quantity values should not have leading zeroes")
-	}
-
 	// If the hex string is odd assume it's because a leading zero was removed
 	if len(value)%2 != 0 {
 		value = "0x0" + value[2:]
@@ -57,26 +44,6 @@ func NewQuantity(value string) (*Quantity, error) {
 
 	q.i.SetBytes(b)
 	return &q, nil
-}
-
-func NewQuantityFromRLP(v rlp.Value) (*Quantity, error) {
-	if v.String == "" {
-		return nil, errors.New("cannot convert RLP list to Quantity")
-	}
-
-	if v.String == "0x" {
-		return NewQuantity("0x0")
-	}
-
-	if v.String == "0x00" {
-		return NewQuantity("0x0")
-	}
-
-	if strings.HasPrefix(v.String, "0x0") {
-		return NewQuantity(strings.Replace(v.String, "0x0", "0x", 1))
-	}
-
-	return NewQuantity(v.String)
 }
 
 func QuantityFromInt64(value int64) Quantity {
@@ -125,26 +92,20 @@ func (q *Quantity) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&q.s)
 }
 
-func (q Quantity) String() string {
+func (q *Quantity) String() string {
 	return q.s
 }
 
-func (q Quantity) UInt64() uint64 {
+func (q *Quantity) UInt64() uint64 {
 	return q.i.Uint64()
 }
 
-func (q Quantity) Int64() int64 {
+func (q *Quantity) Int64() int64 {
 	return q.i.Int64()
 }
 
-func (q Quantity) Big() *big.Int {
+func (q *Quantity) Big() *big.Int {
 	return &q.i
-}
-
-func (q Quantity) RLP() rlp.Value {
-	return rlp.Value{
-		String: "0x" + hex.EncodeToString(q.i.Bytes()),
-	}
 }
 
 func bigToQuantityString(i *big.Int) string {
