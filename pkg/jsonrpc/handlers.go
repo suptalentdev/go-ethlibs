@@ -53,6 +53,7 @@ var (
 type requestHandlerFunc func(ctx RequestContext, request *Request) (interface{}, *Error)
 
 func (h requestHandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
 	buff, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -78,6 +79,7 @@ func (h requestHandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	result, e := h(RequestContext{ctx}, &request)
 	WriteResponse(w, &request, result, e)
+	return
 }
 
 func WriteResponse(w http.ResponseWriter, request *Request, result interface{}, e *Error) {
@@ -110,4 +112,5 @@ func WriteResponse(w http.ResponseWriter, request *Request, result interface{}, 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(b)
+	return
 }
