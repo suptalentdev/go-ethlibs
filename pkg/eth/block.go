@@ -37,7 +37,7 @@ type Block struct {
 	SealFields *[]Data `json:"sealFields,omitempty"`
 
 	// Track the flavor so we can re-encode correctly
-	flavor string
+	flavor string `json:"-"`
 }
 
 func (b *Block) DepopulateTransactions() {

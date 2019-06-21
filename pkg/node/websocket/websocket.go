@@ -39,20 +39,18 @@ type Connection interface {
 	// Request method can be used by downstream consumers of ChangeEvent to make generic JSONRPC requests
 	Request(ctx context.Context, r *jsonrpc.Request) (*jsonrpc.RawResponse, error)
 
-	// Subscibe method can be used to make subscription requests
-	Subscribe(ctx context.Context, r *jsonrpc.Request) (Subscription, error)
-
 	// NewHeads subscription
 	NewHeads(ctx context.Context) (Subscription, error)
 
 	// NewPendingTransactions subscriptions
-	NewPendingTransaction(ctx context.Context, full ...bool) (Subscription, error)
+	NewPendingTransaction(ctx context.Context) (Subscription, error)
 
 	// TransactionReceipt for a particular transaction
 	TransactionReceipt(ctx context.Context, hash string) (*eth.TransactionReceipt, error)
 
 	// GetLogs
 	GetLogs(ctx context.Context, filter eth.LogFilter) ([]eth.Log, error)
+
 }
 
 type connection struct {
@@ -75,12 +73,14 @@ type connection struct {
 
 type subscriptionRequest struct {
 	request  *jsonrpc.Request
+	response *jsonrpc.Response
 	chResult chan *subscription
 	chError  chan error
 }
 
 type outboundRequest struct {
 	request  *jsonrpc.Request
+	response *jsonrpc.RawResponse
 	chResult chan *jsonrpc.RawResponse
 	chError  chan error
 }
@@ -343,10 +343,13 @@ func (c *connection) loop() {
 
 	// Aborter
 	g.Go(func() error {
-		<-ctx.Done()
-		log.Printf("[DEBUG] Context done, setting deadlines to now")
-		_ = c.conn.SetReadDeadline(time.Now())
-		_ = c.conn.SetWriteDeadline(time.Now())
+		select {
+		case <-ctx.Done():
+			log.Printf("[DEBUG] Context done, setting deadlines to now")
+			_ = c.conn.SetReadDeadline(time.Now())
+			_ = c.conn.SetWriteDeadline(time.Now())
+		}
+
 		return nil
 	})
 
@@ -542,25 +545,14 @@ func (c *connection) NewHeads(ctx context.Context) (Subscription, error) {
 	return c.Subscribe(ctx, &r)
 }
 
-// if full is set to true, includeTransactions will be set to true for subscription parameters
-func (c *connection) NewPendingTransaction(ctx context.Context, full ...bool) (Subscription, error) {
-
-	var r jsonrpc.Request
-	if full != nil {
-		r = jsonrpc.Request{
-			JSONRPC: "2.0",
-			ID:      jsonrpc.ID{Str: "pending", IsString: true},
-			Method:  "eth_subscribe",
-			Params:  jsonrpc.MustParams("newPendingTransactions", map[string]interface{}{"includeTransactions": full[0]}),
-		}
-	} else {
-		r = jsonrpc.Request{
-			JSONRPC: "2.0",
-			ID:      jsonrpc.ID{Str: "pending", IsString: true},
-			Method:  "eth_subscribe",
-			Params:  jsonrpc.MustParams("newPendingTransactions"),
-		}
+func (c *connection) NewPendingTransaction(ctx context.Context) (Subscription, error) {
+	r := jsonrpc.Request{
+		JSONRPC: "2.0",
+		ID:      jsonrpc.ID{Str: "pending", IsString: true},
+		Method:  "eth_subscribe",
+		Params:  jsonrpc.MustParams("newPendingTransactions"),
 	}
+
 	return c.Subscribe(ctx, &r)
 }
 
@@ -580,7 +572,7 @@ func (c *connection) TransactionReceipt(ctx context.Context, hash string) (*eth.
 		return nil, errors.New(string(*response.Error))
 	}
 
-	if bytes.Equal(response.Result, json.RawMessage(`null`)) {
+	if bytes.Compare(response.Result, json.RawMessage(`null`)) == 0 {
 		// Then the transaction isn't recognized
 		return nil, errors.Errorf("receipt for transaction %s not found", hash)
 	}

@@ -31,18 +31,14 @@ type Transaction struct {
 	Condition *Condition `json:"condition,omitempty"`
 
 	// Keep the source so we can recreate its expected representation
-	source string
-}
-
-type NewPendingTxBodyNotificationParams struct {
-	Subscription string `json:"subscription"`
-	Result Transaction `json:"result"`
+	source string `json:"-"`
 }
 
 type NewPendingTxNotificationParams struct {
 	Subscription string `json:"subscription"`
 	Result       Hash   `json:"result"`
 }
+
 
 func (t *Transaction) UnmarshalJSON(data []byte) error {
 	type tx Transaction
