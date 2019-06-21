@@ -1,4 +1,4 @@
-module github.com/INFURA/go-ethlibs
+module github.com/INFURA/ethereum-interaction
 
 go 1.12
 
